@@ -1,5 +1,6 @@
 package com.r00t.logit.aspect.log;
 
+import com.r00t.logit.service.LoggerService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -47,14 +48,6 @@ public class LoggerAspect {
             "postRequestMappings() || " +
             "putRequestMappings()")
     public Object temp(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-        log.info(
-                "{} {} from {}",
-                "request.getMethod()",
-                "request.getRequestURI()",
-                "request.getRemoteAddr()",
-                "request.getHeader(\"user-id\")"
-        );
-
         loggerService.request(proceedingJoinPoint);
         Object value = proceedingJoinPoint.proceed();
         loggerService.response(proceedingJoinPoint, value);

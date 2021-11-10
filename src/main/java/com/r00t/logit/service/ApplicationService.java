@@ -1,16 +1,16 @@
 package com.r00t.logit.service;
 
-import com.r00t.logit.aspect.log.DynamicLoggingConfig;
+import com.r00t.logit.model.DynamicLoggingConfig;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ApplicationService {
 
-    public ApplicationService cacheable() {
-        return this;
+    public DynamicLoggingConfig getDynamicLoggingConfig(String className) {
+        return null;
     }
 
-    public DynamicLoggingConfig getDynamicLoggingConfig() {
+    public DynamicLoggingConfig getDynamicLoggingConfig(String className, String methodName) {
         return null;
     }
 }

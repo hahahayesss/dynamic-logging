@@ -1,5 +1,6 @@
 package com.r00t.logit.aspect.extra;
 
+import com.r00t.logit.model.SessionHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -22,7 +23,7 @@ public class ExtrasAspect {
     public void controllerMethods() {
     }
 
-    @Pointcut("execution(* *(.., com.r00t.logit.aspect.extra.SessionHolder, ..))")
+    @Pointcut("execution(* *(.., com.r00t.logit.model.SessionHolder, ..))")
     public void methodsWithSessionHolder() {
     }
 
@@ -46,7 +47,7 @@ public class ExtrasAspect {
         }
 
         SessionHolder sessionHolder = new SessionHolder();
-        sessionHolder.setAdminUser(new com.r00t.logit.model.AdminUser());
+        sessionHolder.setAdminUser(new Object());
         sessionHolder.setAppKey("APPPPPPPPKEEEEEYYYYYYYY");
 
         Object[] args = proceedingJoinPoint.getArgs();
@@ -63,10 +64,8 @@ public class ExtrasAspect {
             return proceedingJoinPoint.proceed();
         }
 
-        com.r00t.logit.model.AdminUser adminUser = new com.r00t.logit.model.AdminUser();
-
         Object[] args = proceedingJoinPoint.getArgs();
-        args[parameterIndex] = adminUser;
+        args[parameterIndex] = new Object();
         return proceedingJoinPoint.proceed(args);
     }
 
