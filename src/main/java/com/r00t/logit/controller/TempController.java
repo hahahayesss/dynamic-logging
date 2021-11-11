@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
         // for java 2 byte for 1 character
         // totalByteSize = text.length() * 2
+        // ex: bodiesCharLimit = 50 means the body will be around 100bytes
         bodiesCharLimit = 50,
         disableDynamicLogging = false
 )
