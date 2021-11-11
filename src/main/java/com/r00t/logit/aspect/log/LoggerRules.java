@@ -10,40 +10,40 @@ public @interface LoggerRules {
 
     boolean logBefore() default true;
 
-    boolean excludeArgs() default true;
+    boolean excludeBody() default true;
 
     boolean logAfter() default true;
 
-    boolean excludeResponseArgs() default true;
+    boolean excludeResponseBody() default true;
 
-    int argsCharLimit() default -1;
+    int bodiesCharLimit() default -1;
 
     boolean disableDynamicLogging() default false;
 
     @SuppressWarnings("all")
     static class DefaultRules implements LoggerRules {
         private boolean logBefore;
-        private boolean excludeArgs;
+        private boolean excludeBody;
         private boolean logAfter;
-        private boolean excludeResponseArgs;
-        private int argsCharLimit;
+        private boolean excludeResponseBody;
+        private int bodiesCharLimit;
         private boolean disableDynamicLogging;
 
         public DefaultRules() {
             this.logBefore = true;
-            this.excludeArgs = true;
+            this.excludeBody = true;
             this.logAfter = true;
-            this.excludeResponseArgs = true;
-            this.argsCharLimit = -1;
+            this.excludeResponseBody = true;
+            this.bodiesCharLimit = -1;
             this.disableDynamicLogging = false;
         }
 
         public DefaultRules overrideFrom(DynamicLoggingConfig config) {
             this.logBefore = config.isLogBefore();
-            this.excludeArgs = config.isExcludeArgs();
+            this.excludeBody = config.isExcludeBody();
             this.logAfter = config.isLogAfter();
-            this.excludeResponseArgs = config.isExcludeResponseArgs();
-            this.argsCharLimit = config.getArgsCharLimit();
+            this.excludeResponseBody = config.isExcludeResponseBody();
+            this.bodiesCharLimit = config.getBodiesCharLimit();
             return this;
         }
 
@@ -53,8 +53,8 @@ public @interface LoggerRules {
         }
 
         @Override
-        public boolean excludeArgs() {
-            return this.excludeArgs;
+        public boolean excludeBody() {
+            return this.excludeBody;
         }
 
         @Override
@@ -63,13 +63,13 @@ public @interface LoggerRules {
         }
 
         @Override
-        public boolean excludeResponseArgs() {
-            return this.excludeResponseArgs;
+        public boolean excludeResponseBody() {
+            return this.excludeResponseBody;
         }
 
         @Override
-        public int argsCharLimit() {
-            return this.argsCharLimit;
+        public int bodiesCharLimit() {
+            return this.bodiesCharLimit;
         }
 
         @Override

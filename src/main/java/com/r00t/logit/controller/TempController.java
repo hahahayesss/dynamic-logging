@@ -1,32 +1,36 @@
 package com.r00t.logit.controller;
 
-import com.r00t.logit.aspect.extra.AdminUser;
-import com.r00t.logit.aspect.extra.AppKey;
-import com.r00t.logit.model.SessionHolder;
+import com.r00t.logit.aspect.log.LoggerRules;
+import com.r00t.logit.payload.Payload;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(value = "/temp")
+@RequestMapping("/temp")
+@LoggerRules(
+        logBefore = true,
+        excludeBody = false,
+
+        logAfter = true,
+        excludeResponseBody = false,
+
+        // for java 2 byte for 1 character
+        // totalByteSize = text.length() * 2
+        bodiesCharLimit = 50,
+        disableDynamicLogging = false
+)
 public class TempController {
 
-    @GetMapping("/one")
-    public ResponseEntity<?> getOne() {
-        return ResponseEntity.ok(null);
-    }
-
-    @GetMapping("/two")
-    public ResponseEntity<?> getTwo(@AppKey String appKey,
-                                 @AdminUser Object adminUser) {
-        return ResponseEntity.ok(null);
-    }
-
-    @GetMapping("/three")
-    public ResponseEntity<?> getThree(SessionHolder sessionHolder) {
-        System.out.println(sessionHolder.getAppKey());
-        System.out.println(sessionHolder.getAdminUser());
-        return ResponseEntity.ok(null);
+    @PostMapping("/method")
+    public ResponseEntity<?> temp(@RequestBody Payload request) {
+        Payload response = new Payload();
+        response.setSmallText("Sed ante purus, volutpat id ex at, dapibus malesuada velit");
+        response.setLongText("Sed euismod ac nunc non hendrerit. Duis eget auctor nisi. " +
+                                     "Maecenas velit massa, imperdiet a massa eu, mollis accumsan tortor. " +
+                                     "Integer at nibh felis. Suspendisse semper diam eget urna lacinia volutpat.");
+        return ResponseEntity.ok(response);
     }
 }

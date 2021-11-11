@@ -1,5 +1,6 @@
 package com.r00t.logit.aspect.log;
 
+import com.r00t.logit.model.SessionAttributes;
 import com.r00t.logit.service.LoggerService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -7,6 +8,10 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import javax.servlet.http.HttpServletRequest;
 
 @Aspect
 @Component
@@ -48,9 +53,18 @@ public class LoggerAspect {
             "postRequestMappings() || " +
             "putRequestMappings()")
     public Object temp(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
-        loggerService.request(proceedingJoinPoint);
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder
+                .currentRequestAttributes())
+                .getRequest();
+        SessionAttributes sessionAttributes = new SessionAttributes();
+        sessionAttributes.setMethod(request.getMethod());
+        sessionAttributes.setRequestURI(request.getRequestURI());
+        sessionAttributes.setRemoteAddr(request.getRemoteAddr());
+
+        loggerService.request(proceedingJoinPoint, sessionAttributes);
         Object value = proceedingJoinPoint.proceed();
-        loggerService.response(proceedingJoinPoint, value);
+        loggerService.response(proceedingJoinPoint, sessionAttributes, value);
+
         return value;
     }
 }

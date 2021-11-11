@@ -4,20 +4,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.r00t.logit.aspect.log.LoggerRules;
 import com.r00t.logit.model.DynamicLoggingConfig;
+import com.r00t.logit.model.SessionAttributes;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.bind.annotation.RequestBody;
 
-import javax.servlet.http.HttpServletRequest;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.lang.reflect.Parameter;
+import java.util.stream.IntStream;
 
 // DeleteProfileAttribute - Preprod üzerinde load test yapılıcak
 // heath map olayına da bakılacak (kütüphane (jamon) ile 2cil olarak bakılıcak)
@@ -27,11 +27,11 @@ import java.util.stream.Collectors;
 @Service
 @EnableAsync
 public class LoggerService {
-    private static final String REQUEST_LOG_FORMAT = "Request: {} {} from {}";
-    private static final String REQUEST_LOG_WITH_ARGS_FORMAT = "Request: {} {} from {} with {}";
+    private static final String REQUEST_LOG_FORMAT = "[ Request] [{}] {} from {}";
+    private static final String REQUEST_LOG_WITH_ARGS_FORMAT = "[ Request] [{}] {} from {} with {}";
 
-    private static final String RESPONSE_LOG_FORMAT = "Response: {} {} to {}";
-    private static final String RESPONSE_LOG_WITH_ARGS_FORMAT = "Response: {} {} to {} with {}";
+    private static final String RESPONSE_LOG_FORMAT = "[Response] [{}] {} to {}";
+    private static final String RESPONSE_LOG_WITH_ARGS_FORMAT = "[Response] [{}] {} to {} with {}";
 
     private final ApplicationService applicationService;
     private final ObjectMapper mapper;
@@ -44,48 +44,35 @@ public class LoggerService {
     // ================================================================================================================
 
     @Async
-    public void request(ProceedingJoinPoint joinPoint) {
+    public void request(ProceedingJoinPoint joinPoint, SessionAttributes attributes) {
         LoggerRules rules = getRules(joinPoint);
         if (!rules.logBefore())
             return;
-
-        HttpServletRequest request = getServletRequest();
-        if (rules.excludeArgs()) {
+        if (rules.excludeBody()) {
             log.info(REQUEST_LOG_FORMAT,
-                     request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
+                     attributes.getMethod(), attributes.getRequestURI(), attributes.getRemoteAddr());
         } else {
-            String argsText = "{}";
-            try {
-                argsText = argsToJson(joinPoint.getArgs(), rules.argsCharLimit());
-            } catch (JsonProcessingException e) {
-                argsText = e.getMessage();
-            } finally {
-                log.info(REQUEST_LOG_WITH_ARGS_FORMAT,
-                         request.getMethod(), request.getRequestURI(), request.getRemoteAddr(), argsText);
-            }
+            Object body = getAnnotatedArg(joinPoint, RequestBody.class);
+            String bodyText = objectToJson(body, rules.bodiesCharLimit());
+            log.info(REQUEST_LOG_WITH_ARGS_FORMAT,
+                     attributes.getMethod(), attributes.getRequestURI(), attributes.getRemoteAddr(), bodyText);
         }
     }
 
     @Async
-    public void response(ProceedingJoinPoint joinPoint, Object value) {
+    public void response(ProceedingJoinPoint joinPoint, SessionAttributes attributes, Object value) {
         LoggerRules rules = getRules(joinPoint);
         if (!rules.logAfter())
             return;
-
-        HttpServletRequest request = getServletRequest();
-        if (rules.excludeResponseArgs()) {
+        if (rules.excludeResponseBody()) {
             log.info(RESPONSE_LOG_FORMAT,
-                     request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
+                     attributes.getMethod(), attributes.getRequestURI(), attributes.getRemoteAddr());
         } else {
-            String argsText = "{}";
-            try {
-                argsText = argsToJson(new Object[]{value}, rules.argsCharLimit());
-            } catch (JsonProcessingException e) {
-                argsText = e.getMessage();
-            } finally {
-                log.info(RESPONSE_LOG_WITH_ARGS_FORMAT,
-                         request.getMethod(), request.getRequestURI(), request.getRemoteAddr(), argsText);
-            }
+            if (value instanceof ResponseEntity<?>)
+                value = ((ResponseEntity<?>) value).getBody();
+            String bodyText = objectToJson(value, rules.bodiesCharLimit());
+            log.info(RESPONSE_LOG_WITH_ARGS_FORMAT,
+                     attributes.getMethod(), attributes.getRequestURI(), attributes.getRemoteAddr(), bodyText);
         }
     }
 
@@ -130,32 +117,34 @@ public class LoggerService {
                : applicationService.getDynamicLoggingConfig(clazzName);
     }
 
-    private String argsToJson(Object[] args, int lengthLimit)
-    throws JsonProcessingException {
-        if (args == null)
-            return "{empty}";
-        if (args.length == 0)
-            return "{empty}";
+    private Object getAnnotatedArg(ProceedingJoinPoint joinPoint, Class<? extends Annotation> annotation) {
+        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+        Parameter[] parameters = method.getParameters();
 
-        String json = mapper.writeValueAsString(
-                Arrays.stream(args)
-                      .collect(Collectors.toMap(
-                              o -> o.getClass().getName(),
-                              Function.identity()
-                      ))
-        );
-
-        if (lengthLimit != -1)
-            if (json.length() > lengthLimit)
-                return json.substring(0, lengthLimit) + "...";
-        return json;
+        int parameterIndex = IntStream
+                .range(0, parameters.length)
+                .parallel()
+                .filter(value -> parameters[value].getDeclaredAnnotation(RequestBody.class) != null)
+                .findFirst()
+                .orElse(-1);
+        return parameterIndex != -1
+               ? joinPoint.getArgs()[parameterIndex]
+               : null;
     }
 
-    // ================================================================================================================
-
-    private HttpServletRequest getServletRequest() {
-        return ((ServletRequestAttributes) RequestContextHolder
-                .currentRequestAttributes())
-                .getRequest();
+    private String objectToJson(Object o, int lengthLimit) {
+        String json = "";
+        try {
+            if (o == null)
+                return "{null}";
+            json = mapper.writeValueAsString(o);
+        } catch (JsonProcessingException e) {
+            json = e.getMessage();
+        } finally {
+            if (lengthLimit != -1)
+                if (json.length() > lengthLimit)
+                    json = json.substring(0, lengthLimit) + "...}";
+        }
+        return json;
     }
 }

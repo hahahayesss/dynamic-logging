@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 @Component
 public class ExtrasAspect {
 
-    @Pointcut("@within(org.springframework.stereotype.Controller)")
+    @Pointcut("@within(org.springframework.web.bind.annotation.RestController)")
     public void controllerMethods() {
     }
 
